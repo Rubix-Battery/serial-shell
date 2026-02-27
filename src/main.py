@@ -51,8 +51,18 @@ def main():
             print(f"{Fore.RED}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
 
     port = get_valid_port()
-    baud_input = input("Enter baud rate [115200]: ").strip()
-    baud = int(baud_input) if baud_input else 115200
+
+    COMMON_BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
+
+    def get_valid_baud():
+        while True:
+            baud_input = input(f"Enter baud rate {COMMON_BAUD_RATES} [default: 115200]: ").strip()
+            baud = int(baud_input) if baud_input else 115200
+            if baud in COMMON_BAUD_RATES:
+                return baud
+            print(f"{Fore.RED}[Error: '{baud}' is not a valid baud rate. Allowed: {', '.join(str(b) for b in COMMON_BAUD_RATES)}]{Style.RESET_ALL}")
+
+    baud = get_valid_baud()
     logfile = os.path.join(LOG_DIR, f"{port.replace('/', '_')}.log")
 
     stop_event = threading.Event()
