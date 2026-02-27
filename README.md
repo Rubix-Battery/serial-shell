@@ -25,4 +25,10 @@ venv/Scripts/Activate.ps1
 
 ```shell
 pyinstaller --onefile --icon=img/termial.ico --name=Termial src/main.py
+# Note: The icon may not change until you reboot the PC or copy the 
+# executable to another location.
 ```
+
+## Resources
+
+[`.png` to `.ico` converter](https://image.online-convert.com/convert/png-to-ico) for creating an icon for the executable file.
