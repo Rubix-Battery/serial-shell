@@ -101,16 +101,24 @@ def main():
                     print(" /log <filename> - Change log file")
                     print(" /lsport        - List available serial ports")
                 elif cmd == "/lsport":
-                    print("Available serial ports:")
-                    ports = [port for port in serial.tools.list_ports.comports() if not port.device.startswith('NULL_')]
-                    if ports:
-                        maxlen = max(len(port.device) for port in ports)
+                    print("Available serial ports (not in use):")
+                    all_ports = [port for port in serial.tools.list_ports.comports() if not port.device.startswith('NULL_')]
+                    available_ports = []
+                    for port in all_ports:
+                        try:
+                            s = serial.Serial(port.device, timeout=0.1)
+                            s.close()
+                            available_ports.append(port)
+                        except (serial.SerialException, OSError):
+                            pass
+                    if available_ports:
+                        maxlen = max(len(port.device) for port in available_ports)
                         label_width = maxlen + 3  # 3 for ' -'
-                        for port in ports:
+                        for port in available_ports:
                             port_name = f"{port.device}"
                             print(f"  {Fore.BLUE}{port_name.ljust(label_width)}{Style.RESET_ALL} {Fore.YELLOW}-{Style.RESET_ALL} {Fore.MAGENTA}{port.description}{Style.RESET_ALL}")
                     else:
-                        print("  (No serial ports found)")
+                        print("  (No available serial ports found)")
                 elif cmd == "/port" and len(tokens) >= 2:
                     new_port = tokens[1]
                     print(f"{Fore.CYAN}[Switching to port {new_port}]{Style.RESET_ALL}")
