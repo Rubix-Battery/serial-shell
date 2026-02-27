@@ -1,1 +1,6 @@
 logs/
+venv/
+
+# pyinstaller ignores
+build/
+**.spec
