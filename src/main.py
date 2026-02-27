@@ -134,8 +134,10 @@ def main():
             else:
                 if ser and ser.is_open:
                     ser.write((line + "\n").encode())
-    except (KeyboardInterrupt, EOFError):
-        pass
+    except KeyboardInterrupt:
+        print("User exited.")
+    except EOFError:
+        print("End of input.")
     finally:
         thread.close()
         ser.close()
