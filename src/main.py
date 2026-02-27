@@ -1,89 +1,40 @@
+
+#!/usr/bin/env python3
+"""
+Termial: Simple Serial Terminal for Windows (ESP32 / NodeMCU)
+- Efficient, low-CPU, colored RX, CLI, TX/RX
+"""
+
+import serial
+import threading
+import sys
+import os
 from colorama import init, Fore, Style
 
 # Initialize colorama
 init(autoreset=True)
-#!/usr/bin/env python3
-"""
-Termial: Simple Serial Terminal for Windows (ESP32 / NodeMCU)
-- Uses PySerial's threaded ReaderThread
-- Runtime port and baud rate changes
-- Input/output in same console
-- Optional logging
-"""
-
-import serial
-import serial.threaded
-import threading
-import sys
-import os
-import time
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
-
-class TerminalProtocol(serial.threaded.Protocol):
-    """Termial protocol: Handles incoming serial data, prints to console, and logs if enabled."""
-    def __init__(self, label=None, logfile=None, flush_interval=0.1):
-        super().__init__()
-        self.transport = None
-        self.label = label
-        self.logfile = logfile
-        self.flush_interval = flush_interval  # seconds
-        self._buffer = bytearray()
-        self._last_received = time.time()
-        self._lock = threading.Lock()
-        self._data_event = threading.Event()
-        self._flusher = threading.Thread(target=self._flush_loop, daemon=True)
-        self._flusher.start()
-
-    def connection_made(self, transport):
-        self.transport = transport
-        print(f"[Connected on {transport.serial.port}]")
-
-    def data_received(self, data):
-        """Accumulate data; flush after idle timeout"""
-        with self._lock:
-            self._buffer.extend(data)
-            self._last_received = time.time()
-            self._data_event.set()
-
-    def _flush_loop(self):
-        """Flush only when data is received (fully passive, low CPU)."""
-        while True:
-            self._data_event.wait()  # Wait indefinitely for data
-            self._data_event.clear()
-            with self._lock:
-                if self._buffer:
-                    text = self._buffer.decode(errors='ignore')
-                    sys.stdout.write(Fore.GREEN + text + Style.RESET_ALL + "\n")  # add newline
-                    sys.stdout.flush()
-                    # Optional logging
-                    if self.logfile:
-                        with open(self.logfile, 'a') as f:
-                            f.write(f"{self.label}: {text}\n")
-                    self._buffer.clear()
-
-    @classmethod
-    def flush(cls, logfile):
-        """Flush class-level buffer (optional, existing behavior)"""
-        if cls.buffer:
-            with open(logfile, 'a') as f:
-                f.write(f"{cls.last_direction}: {cls.buffer}\n")
-            cls.buffer = ""
-
-    def connection_lost(self, exc):
-        print(f"\n[Connection lost: {exc}]")
-
-
-def start_terminal(port_name, baud=115200, label="TERMINAL", logfile=None):
-    """Starts a ReaderThread for Termial and returns the thread and Serial object."""
-    ser = serial.Serial(port_name, baud, timeout=0)
-    protocol_factory = lambda: TerminalProtocol(label=label, logfile=logfile)
-    thread = serial.threaded.ReaderThread(ser, protocol_factory)
-    thread.start()
-    return thread, ser
-
+def serial_reader(ser, stop_event, logfile=None):
+    """Read from serial port, print RX in green, log if needed."""
+    while not stop_event.is_set():
+        try:
+            data = ser.read(1024)  # blocking read, returns after timeout or data
+            if data:
+                text = data.decode(errors='ignore')
+                # Ensure each RX message ends with a newline
+                if not text.endswith("\n"):
+                    text += "\n"
+                sys.stdout.write(Fore.GREEN + text + Style.RESET_ALL)
+                sys.stdout.flush()
+                if logfile:
+                    with open(logfile, 'a') as f:
+                        f.write(f"RX: {text}")
+        except Exception as e:
+            print(f"[Serial read error: {e}]")
+            break
 
 def main():
     print("=== Termial: Simple Serial Terminal ===")
@@ -95,7 +46,15 @@ def main():
     baud = int(baud_input) if baud_input else 115200
     logfile = os.path.join(LOG_DIR, f"{port.replace('/', '_')}.log")
 
-    thread, ser = start_terminal(port, baud, logfile=logfile)
+    stop_event = threading.Event()
+
+    def open_serial():
+        ser = serial.Serial(port, baud, timeout=0.5)
+        return ser
+
+    ser = open_serial()
+    reader_thread = threading.Thread(target=serial_reader, args=(ser, stop_event, logfile), daemon=True)
+    reader_thread.start()
 
     try:
         while True:
@@ -115,15 +74,24 @@ def main():
                 elif cmd == "/port" and len(tokens) >= 2:
                     new_port = tokens[1]
                     print(f"[Switching to port {new_port}]")
-                    thread.close()
+                    stop_event.set()
+                    reader_thread.join()
                     ser.close()
-                    thread, ser = start_terminal(new_port, baud, logfile=logfile)
+                    port = new_port
+                    stop_event.clear()
+                    ser = open_serial()
+                    reader_thread = threading.Thread(target=serial_reader, args=(ser, stop_event, logfile), daemon=True)
+                    reader_thread.start()
                 elif cmd == "/baud" and len(tokens) >= 2:
                     baud = int(tokens[1])
                     print(f"[Switching baud rate to {baud}]")
-                    thread.close()
+                    stop_event.set()
+                    reader_thread.join()
                     ser.close()
-                    thread, ser = start_terminal(port, baud, logfile=logfile)
+                    stop_event.clear()
+                    ser = open_serial()
+                    reader_thread = threading.Thread(target=serial_reader, args=(ser, stop_event, logfile), daemon=True)
+                    reader_thread.start()
                 elif cmd == "/log" and len(tokens) >= 2:
                     logfile = os.path.join(LOG_DIR, tokens[1])
                     print(f"[Logging to {logfile}]")
@@ -137,9 +105,11 @@ def main():
     except EOFError:
         print("End of input.")
     finally:
-        thread.close()
+        stop_event.set()
+        reader_thread.join()
         ser.close()
         print("\nTerminal closed.")
+
 
 
 if __name__ == "__main__":
