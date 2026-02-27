@@ -40,19 +40,37 @@ def main():
     print("=== Termial: Simple Serial Terminal ===")
     print("Type /help for commands.\n")
 
-    port_input = input("Enter port (e.g., COM1): ").strip()
-    port = port_input if port_input else 'COM1'
+
+    def get_valid_port():
+        while True:
+            ports = [p.device for p in serial.tools.list_ports.comports() if not p.device.startswith('NULL_')]
+            port_input = input(f"Enter port (e.g., COM1) [{ports[0] if ports else 'COM1'}]: ").strip()
+            port = port_input.upper() if port_input else (ports[0] if ports else 'COM1')
+            if port in ports:
+                return port
+            print(f"[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]")
+
+    port = get_valid_port()
     baud_input = input("Enter baud rate [115200]: ").strip()
     baud = int(baud_input) if baud_input else 115200
     logfile = os.path.join(LOG_DIR, f"{port.replace('/', '_')}.log")
 
     stop_event = threading.Event()
 
+
     def open_serial():
-        ser = serial.Serial(port, baud, timeout=0.5)
-        return ser
+        try:
+            ser = serial.Serial(port, baud, timeout=0.5)
+            return ser
+        except (serial.SerialException, OSError) as e:
+            print(f"[Error: Could not open port '{port}': {e}]")
+            return None
 
     ser = open_serial()
+    while ser is None:
+        port = input("Enter a valid port (e.g., COM1): ").strip()
+        ser = open_serial()
+
     reader_thread = threading.Thread(target=serial_reader, args=(ser, stop_event, logfile), daemon=True)
     reader_thread.start()
 
