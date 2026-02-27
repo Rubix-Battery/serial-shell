@@ -79,8 +79,8 @@ def main():
                         maxlen = max(len(port.device) for port in ports)
                         label_width = maxlen + 3  # 3 for ' -'
                         for port in ports:
-                            port_and_dash = f"{port.device} -"
-                            print(f"  {Fore.BLUE}{port_and_dash.ljust(label_width)}{Style.RESET_ALL} {Fore.MAGENTA}{port.description}{Style.RESET_ALL}")
+                            port_name = f"{port.device}"
+                            print(f"  {Fore.BLUE}{port_name.ljust(label_width)}{Style.RESET_ALL} {Fore.YELLOW}-{Style.RESET_ALL} {Fore.MAGENTA}{port.description}{Style.RESET_ALL}")
                     else:
                         print("  (No serial ports found)")
                 elif cmd == "/port" and len(tokens) >= 2:
