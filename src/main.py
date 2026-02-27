@@ -49,14 +49,12 @@ class TerminalProtocol(serial.threaded.Protocol):
             self._data_event.set()
 
     def _flush_loop(self):
-        """Event-driven flush: wait for data or timeout, then flush buffer if idle."""
+        """Flush only when data is received (fully passive, low CPU)."""
         while True:
-            # Wait for data or timeout
-            self._data_event.wait(timeout=self.flush_interval)
+            self._data_event.wait()  # Wait indefinitely for data
             self._data_event.clear()
-            now = time.time()
             with self._lock:
-                if self._buffer and (now - self._last_received >= self.flush_interval):
+                if self._buffer:
                     text = self._buffer.decode(errors='ignore')
                     sys.stdout.write(Fore.GREEN + text + Style.RESET_ALL + "\n")  # add newline
                     sys.stdout.flush()
