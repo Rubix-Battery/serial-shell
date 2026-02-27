@@ -33,6 +33,7 @@ class TerminalProtocol(serial.threaded.Protocol):
         self._buffer = bytearray()
         self._last_received = time.time()
         self._lock = threading.Lock()
+        self._data_event = threading.Event()
         self._flusher = threading.Thread(target=self._flush_loop, daemon=True)
         self._flusher.start()
 
@@ -45,11 +46,14 @@ class TerminalProtocol(serial.threaded.Protocol):
         with self._lock:
             self._buffer.extend(data)
             self._last_received = time.time()
+            self._data_event.set()
 
     def _flush_loop(self):
-        """Periodically flush buffer if idle > flush_interval"""
+        """Event-driven flush: wait for data or timeout, then flush buffer if idle."""
         while True:
-            time.sleep(self.flush_interval / 2)
+            # Wait for data or timeout
+            self._data_event.wait(timeout=self.flush_interval)
+            self._data_event.clear()
             now = time.time()
             with self._lock:
                 if self._buffer and (now - self._last_received >= self.flush_interval):
