@@ -4,7 +4,7 @@ from colorama import init, Fore, Style
 init(autoreset=True)
 #!/usr/bin/env python3
 """
-Portable Serial Terminal for Windows (ESP32 / NodeMCU)
+Termial: Simple Serial Terminal for Windows (ESP32 / NodeMCU)
 - Uses PySerial's threaded ReaderThread
 - Runtime port and baud rate changes
 - Input/output in same console
@@ -23,7 +23,7 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 
 class TerminalProtocol(serial.threaded.Protocol):
-    """Handles incoming serial data, prints to console, and logs if enabled."""
+    """Termial protocol: Handles incoming serial data, prints to console, and logs if enabled."""
     def __init__(self, label=None, logfile=None, flush_interval=0.1):
         super().__init__()
         self.transport = None
@@ -75,7 +75,7 @@ class TerminalProtocol(serial.threaded.Protocol):
 
 
 def start_terminal(port_name, baud=115200, label="TERMINAL", logfile=None):
-    """Starts a ReaderThread and returns the thread and Serial object."""
+    """Starts a ReaderThread for Termial and returns the thread and Serial object."""
     ser = serial.Serial(port_name, baud, timeout=0)
     protocol_factory = lambda: TerminalProtocol(label=label, logfile=logfile)
     thread = serial.threaded.ReaderThread(ser, protocol_factory)
@@ -84,7 +84,7 @@ def start_terminal(port_name, baud=115200, label="TERMINAL", logfile=None):
 
 
 def main():
-    print("=== Portable Serial Terminal ===")
+    print("=== Termial: Simple Serial Terminal ===")
     print("Type /help for commands.\n")
 
     port_input = input("Enter port (e.g., COM1): ").strip()
