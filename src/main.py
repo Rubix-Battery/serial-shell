@@ -1,3 +1,7 @@
+from colorama import init, Fore, Style
+
+# Initialize colorama
+init(autoreset=True)
 #!/usr/bin/env python3
 """
 Portable Serial Terminal for Windows (ESP32 / NodeMCU)
@@ -50,7 +54,7 @@ class TerminalProtocol(serial.threaded.Protocol):
             with self._lock:
                 if self._buffer and (now - self._last_received >= self.flush_interval):
                     text = self._buffer.decode(errors='ignore')
-                    sys.stdout.write(text + "\n")  # add newline
+                    sys.stdout.write(Fore.GREEN + text + Style.RESET_ALL + "\n")  # add newline
                     sys.stdout.flush()
                     # Optional logging
                     if self.logfile:
