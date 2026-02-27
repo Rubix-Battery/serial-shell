@@ -74,7 +74,7 @@ def main():
                     print(" /lsport        - List available serial ports")
                 elif cmd == "/lsport":
                     print("Available serial ports:")
-                    ports = list(serial.tools.list_ports.comports())
+                    ports = [port for port in serial.tools.list_ports.comports() if not port.device.startswith('NULL_')]
                     if ports:
                         maxlen = max(len(port.device) for port in ports)
                         label_width = maxlen + 3  # 3 for ' -'
