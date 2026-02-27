@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Termial: Simple Serial Terminal for Windows (ESP32 / NodeMCU)
@@ -6,6 +5,7 @@ Termial: Simple Serial Terminal for Windows (ESP32 / NodeMCU)
 """
 
 import serial
+import serial.tools.list_ports
 import threading
 import sys
 import os
@@ -71,6 +71,18 @@ def main():
                     print(" /port <COM>     - Change serial port")
                     print(" /baud <rate>    - Change baud rate")
                     print(" /log <filename> - Change log file")
+                    print(" /lsport        - List available serial ports")
+                elif cmd == "/lsport":
+                    print("Available serial ports:")
+                    ports = list(serial.tools.list_ports.comports())
+                    if ports:
+                        maxlen = max(len(port.device) for port in ports)
+                        label_width = maxlen + 3  # 3 for ' -'
+                        for port in ports:
+                            port_and_dash = f"{port.device} -"
+                            print(f"  {Fore.BLUE}{port_and_dash.ljust(label_width)}{Style.RESET_ALL} {Fore.MAGENTA}{port.description}{Style.RESET_ALL}")
+                    else:
+                        print("  (No serial ports found)")
                 elif cmd == "/port" and len(tokens) >= 2:
                     new_port = tokens[1]
                     print(f"[Switching to port {new_port}]")
