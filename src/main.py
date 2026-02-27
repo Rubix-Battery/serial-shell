@@ -48,7 +48,7 @@ def main():
             port = port_input.upper() if port_input else (ports[0] if ports else 'COM1')
             if port in ports:
                 return port
-            print(f"[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]")
+            print(f"{Fore.RED}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
 
     port = get_valid_port()
     baud_input = input("Enter baud rate [115200]: ").strip()
@@ -103,7 +103,7 @@ def main():
                         print("  (No serial ports found)")
                 elif cmd == "/port" and len(tokens) >= 2:
                     new_port = tokens[1]
-                    print(f"[Switching to port {new_port}]")
+                    print(f"{Fore.CYAN}[Switching to port {new_port}]{Style.RESET_ALL}")
                     stop_event.set()
                     reader_thread.join()
                     ser.close()
@@ -114,7 +114,7 @@ def main():
                     reader_thread.start()
                 elif cmd == "/baud" and len(tokens) >= 2:
                     baud = int(tokens[1])
-                    print(f"[Switching baud rate to {baud}]")
+                    print(f"{Fore.CYAN}[Switching baud rate to {baud}]{Style.RESET_ALL}")
                     stop_event.set()
                     reader_thread.join()
                     ser.close()
@@ -124,21 +124,21 @@ def main():
                     reader_thread.start()
                 elif cmd == "/log" and len(tokens) >= 2:
                     logfile = os.path.join(LOG_DIR, tokens[1])
-                    print(f"[Logging to {logfile}]")
+                    print(f"{Fore.CYAN}[Logging to {logfile}]{Style.RESET_ALL}")
                 else:
                     print("Unknown command. Type /help for list.")
             else:
                 if ser and ser.is_open:
                     ser.write((line + "\n").encode())
     except KeyboardInterrupt:
-        print("User exited.")
+        print(f"{Fore.CYAN}User exited.{Style.RESET_ALL}")
     except EOFError:
-        print("End of input.")
+        print(f"{Fore.CYAN}End of input.{Style.RESET_ALL}")
     finally:
         stop_event.set()
         reader_thread.join()
         ser.close()
-        print("\nTerminal closed.")
+        print(f"{Fore.CYAN}\nTerminal closed.{Style.RESET_ALL}")
 
 
 
