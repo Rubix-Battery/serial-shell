@@ -51,9 +51,10 @@ def validate_baud(baud: int):
 
 def prompt_baud():
     while True:
-        baud_input = input(f"Enter baud rate {COMMON_BAUD_RATES} [default: 115200]: ").strip()
+        baud_input = input(f"{TERMIAL_COLOR}Enter baud rate {COMMON_BAUD_RATES} [default: 115200]: ").strip()
         baud = int(baud_input) if baud_input else 115200
-        return validate_baud(baud)
+        if validate_baud(baud):
+            return baud
     
 def open_serial(port: str, baud: int):
     try:
@@ -64,14 +65,19 @@ def open_serial(port: str, baud: int):
         return None
 
 
-def get_valid_port():
+def validate_port(port_input: str):
+    ports = [p.device for p in serial.tools.list_ports.comports() if not p.device.startswith('NULL_')]
+    port = port_input.strip().upper()
+    if port in ports:
+        return port
+    print(f"{ERROR_COLOR}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
+
+def prompt_port():
     while True:
-        ports = [p.device for p in serial.tools.list_ports.comports() if not p.device.startswith('NULL_')]
-        port_input = input(f"{TERMIAL_COLOR}Enter port (e.g., COM1) [{ports[0] if ports else 'COM1'}]: ").strip()
-        port = port_input.upper() if port_input else (ports[0] if ports else 'COM1')
-        if port in ports:
+        port_input = input(f"{TERMIAL_COLOR}Enter port (default: COM1)")
+        port = port_input.upper() if port_input else 'COM1'
+        if validate_port(port):
             return port
-        print(f"{ERROR_COLOR}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
 
 def print_header(port: str, baud: int):
     print(f"{TERMIAL_COLOR}=======================================")
@@ -88,7 +94,7 @@ def home_screen(port: str, baud: int):
     print_header(port, baud)
 
 def main():
-    port = get_valid_port()
+    port = prompt_port()
     baud = prompt_baud()
     logfile = os.path.join(LOG_DIR, f"{port.replace('/', '_')}.log")
     home_screen(port, baud)
