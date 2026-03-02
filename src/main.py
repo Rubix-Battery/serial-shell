@@ -106,14 +106,14 @@ def main():
                 if cmd in ("/q","/quit"):
                     break
                 elif cmd in ("/h", "/help"):
-                    print("Commands:")
-                    print(" /h      /help   - Show this message")
-                    print(" /cls    /clear  - Clear the screen")
-                    print(" /q      /quit   - Exit terminal")
-                    print(" /port <COM/tty> - Change serial port")
-                    print(" /baud <rate>    - Change baud rate")
-                    print(" /log <filename> - Change log file")
-                    print(" /lsp    /lsport - List available serial ports")
+                    print(f"{TERMIAL_COLOR}Commands:")
+                    print(f"{TERMIAL_COLOR} /h      /help   - Show this message")
+                    print(f"{TERMIAL_COLOR} /cls    /clear  - Clear the screen")
+                    print(f"{TERMIAL_COLOR} /q      /quit   - Exit terminal")
+                    print(f"{TERMIAL_COLOR} /port <COM/tty> - Change serial port")
+                    print(f"{TERMIAL_COLOR} /baud <rate>    - Change baud rate")
+                    print(f"{TERMIAL_COLOR} /log <filename> - Change log file")
+                    print(f"{TERMIAL_COLOR} /lsp    /lsport - List available serial ports{Style.RESET_ALL}")
                 elif cmd in ("/cls", "/clear"):
                     # Clear the screen and reprint the header and prompts
                     os.system('cls' if os.name == 'nt' else 'clear')
