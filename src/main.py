@@ -106,7 +106,9 @@ class SerialTerminal:
                 with self._lock:
                     if self._rx_buffer and (now - self._last_rx) > 0.1:
                         text = self._rx_buffer.decode(errors="ignore")
-                        sys.stdout.write(RX_COLOR + text + Style.RESET_ALL + "\n")
+                        if not text.endswith("\n"):
+                            text += "\n"
+                        sys.stdout.write(RX_COLOR + text + Style.RESET_ALL)
                         sys.stdout.flush()
 
                         if self.logfile:
