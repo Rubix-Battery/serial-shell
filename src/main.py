@@ -1,187 +1,248 @@
 #!/usr/bin/env python3
-"""
-Termial: Simple Serial Terminal for Windows (ESP32 / NodeMCU)
-- Efficient, low-CPU, colored RX, CLI, TX/RX
-"""
 
 import serial
 import serial.tools.list_ports
 import threading
+import time
 import sys
 import os
 from colorama import init, Fore, Style
 
-# Initialize colorama
 init(autoreset=True)
 
-# text colors
-TERM_COLOR = Fore.LIGHTCYAN_EX
+# Colors
+TERM_COLOR = Fore.CYAN
 ERROR_COLOR = Fore.RED
-RX_COLOR = Fore.CYAN
-LSPORT_COLOR = Fore.YELLOW
+RX_COLOR = Fore.LIGHTCYAN_EX
+TX_COLOR = Fore.GREEN
+PORT_COLOR = Fore.YELLOW
+
+COMMON_BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
 
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
-def serial_reader(ser, stop_event, logfile=None):
-    """Read from serial port, print RX in green, log if needed."""
-    while not stop_event.is_set():
+
+class SerialTerminal:
+
+    def __init__(self):
+        self.port = None
+        self.baud = 115200
+        self.ser = None
+        self.logfile = None
+
+        self.stop_event = threading.Event()
+        self.reader_thread = None
+
+        # buffered RX
+        self._rx_buffer = bytearray()
+        self._last_rx = 0
+        self._lock = threading.Lock()
+
+    # --------------------------------------------------
+    # Validation
+    # --------------------------------------------------
+
+    def available_ports(self):
+        return [
+            p.device
+            for p in serial.tools.list_ports.comports()
+            if not p.device.startswith("NULL_")
+        ]
+
+    def validate_port(self, port):
+        ports = self.available_ports()
+        if port in ports:
+            return True
+        print(f"{ERROR_COLOR}Invalid port: {port} Available: {', '.join(ports) if ports else 'None'}")
+        return False
+
+    def validate_baud(self, baud):
+        if baud in COMMON_BAUD_RATES:
+            return True
+        print(f"{ERROR_COLOR}Invalid baud. Allowed: {COMMON_BAUD_RATES}")
+        return False
+
+    # --------------------------------------------------
+    # Serial Lifecycle
+    # --------------------------------------------------
+
+    def open_serial(self):
         try:
-            data = ser.read(1024)  # blocking read, returns after timeout or data
-            if data:
-                text = data.decode(errors='ignore')
-                # Ensure each RX message ends with a newline
-                if not text.endswith("\n"):
-                    text += "\n"
-                sys.stdout.write(RX_COLOR + text + Style.RESET_ALL)
-                sys.stdout.flush()
-                if logfile:
-                    with open(logfile, 'a') as f:
-                        f.write(f"RX: {text}")
+            self.ser = serial.Serial(self.port, self.baud, timeout=0.1)
+            self.logfile = os.path.join(LOG_DIR, f"{self.port}.log")
+            print(f"{TERM_COLOR}[Connected {self.port} @ {self.baud}]")
+            return True
         except Exception as e:
-            print(f"{ERROR_COLOR}[Serial read error: {e}]{Style.RESET_ALL}")
-            break
+            print(f"{ERROR_COLOR}[Open error: {e}]")
+            return False
 
-COMMON_BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
+    def close_serial(self):
+        self.stop_event.set()
+        if self.reader_thread:
+            self.reader_thread.join()
+        if self.ser and self.ser.is_open:
+            self.ser.close()
 
-def validate_baud(baud: int):
-    if baud in COMMON_BAUD_RATES:
-        return baud
-    print(f"{ERROR_COLOR}[Error: '{baud}' is not a valid baud rate. Allowed: {', '.join(str(b) for b in COMMON_BAUD_RATES)}]{Style.RESET_ALL}")
+    def start_reader(self):
+        self.stop_event.clear()
+        self.reader_thread = threading.Thread(target=self.reader_loop, daemon=True)
+        self.reader_thread.start()
 
-def prompt_baud():
-    while True:
-        baud_input = input(f"{TERM_COLOR}Enter baud rate {COMMON_BAUD_RATES} [default: 115200]: ").strip()
-        baud = int(baud_input) if baud_input else 115200
-        if validate_baud(baud):
-            return baud
-    
-def open_serial(port: str, baud: int):
-    try:
-        ser = serial.Serial(port, baud, timeout=0.5)
-        return ser
-    except (serial.SerialException, OSError) as e:
-        print(f"[Error: Could not open port '{port}': {e}]")
-        return None
+    # --------------------------------------------------
+    # Buffered RX (100ms idle flush)
+    # --------------------------------------------------
 
+    def reader_loop(self):
+        while not self.stop_event.is_set():
+            try:
+                data = self.ser.read(1024)
+                now = time.time()
 
-def validate_port(port_input: str):
-    ports = [p.device for p in serial.tools.list_ports.comports() if not p.device.startswith('NULL_')]
-    port = port_input.strip().upper()
-    if port in ports:
-        return port
-    print(f"{ERROR_COLOR}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
+                if data:
+                    with self._lock:
+                        self._rx_buffer.extend(data)
+                        self._last_rx = now
 
-def prompt_port():
-    while True:
-        port_input = input(f"{TERM_COLOR}Enter port (default: COM1)")
-        port = port_input.upper() if port_input else 'COM1'
-        if validate_port(port):
-            return port
+                with self._lock:
+                    if self._rx_buffer and (now - self._last_rx) > 0.1:
+                        text = self._rx_buffer.decode(errors="ignore")
+                        sys.stdout.write(RX_COLOR + text + Style.RESET_ALL + "\n")
+                        sys.stdout.flush()
 
-def print_header(port: str, baud: int):
-    print(f"{TERM_COLOR}=======================================")
-    print(f"{TERM_COLOR}    Termial: Simple Serial Terminal    ")
-    print(f"{TERM_COLOR}=======================================")
-    print(f"{TERM_COLOR}Type /help for commands.\n")
-    print(f"{TERM_COLOR}Port: {port}")
-    print(f"{TERM_COLOR}Baud: {baud}\n")
-    print(f"{TERM_COLOR}=======================================\n{Style.RESET_ALL}")
+                        if self.logfile:
+                            with open(self.logfile, "a") as f:
+                                f.write(f"RX: {text}\n")
 
-def home_screen(port: str, baud: int):
-    # clear the setup prompts and details
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print_header(port, baud)
+                        self._rx_buffer.clear()
+
+            except Exception as e:
+                print(f"{ERROR_COLOR}[Read error: {e}]")
+                break
+
+    # --------------------------------------------------
+    # CLI
+    # --------------------------------------------------
+
+    def print_header(self):
+        # clear the setup prompts and details
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print(f"{TERM_COLOR}=================================")
+        print(f"{TERM_COLOR}        Termial Console         ")
+        print(f"{TERM_COLOR}=================================")
+        print(f"{TERM_COLOR}Port: {self.port}")
+        print(f"{TERM_COLOR}Baud: {self.baud}")
+        print(f"{TERM_COLOR}Type /h for help\n")
+
+    def list_ports(self):
+        ports = self.available_ports()
+        if not ports:
+            print("No available ports.")
+            return
+        print(f"{TERM_COLOR}Available Ports:")
+        for p in ports:
+            print(f"  {PORT_COLOR}{p}")
+
+    def handle_command(self, line):
+        parts = line.split()
+        cmd = parts[0].lower()
+
+        if cmd in ("/q", "/quit", "/exit"):
+            return False
+
+        elif cmd in ("/h", "/help"):
+            print(f"{TERM_COLOR}/h          Show commands")
+            print(f"{TERM_COLOR}/q          Exit")
+            print(f"{TERM_COLOR}/c          Clear screen")
+            print(f"{TERM_COLOR}/p <COMx>   Change port")
+            print(f"{TERM_COLOR}/b <rate>   Change baud")
+            print(f"{TERM_COLOR}/lsp        List ports")
+
+        elif cmd in ("/clear", "/cls", "/c"):
+            os.system("cls" if os.name == "nt" else "clear")
+            self.print_header()
+
+        elif cmd == "/lsp":
+            self.list_ports()
+
+        elif cmd in ("/p", "/port") and len(parts) > 1:
+            new_port = parts[1].upper()
+            if not self.validate_port(new_port):
+                return True
+
+            self.close_serial()
+            self.port = new_port
+            if self.open_serial():
+                self.start_reader()
+
+        elif cmd in ("/b", "/baud") and len(parts) > 1:
+            try:
+                new_baud = int(parts[1])
+            except ValueError:
+                print(f"{ERROR_COLOR}Invalid baud value.")
+                return True
+
+            if not self.validate_baud(new_baud):
+                return True
+
+            self.close_serial()
+            self.baud = new_baud
+            if self.open_serial():
+                self.start_reader()
+
+        else:
+            print("Unknown command.")
+
+        return True
+
+    # --------------------------------------------------
+    # Main Loop
+    # --------------------------------------------------
+
+    def run(self):
+        while True:
+            port_input = input(f"{TERM_COLOR}Enter port (e.g., COM1): ").upper()
+            # default to first serial port on system if none is input
+            port = port_input if port_input else ('COM1' if os.name == 'nt' else '/dev/ttyUSB0')
+            if self.validate_port(port):
+                self.port = port
+                break
+
+        while True:
+            baud_input = input(f"{TERM_COLOR}Enter baud {COMMON_BAUD_RATES} [115200]: ").strip()
+            baud = int(baud_input) if baud_input else 115200
+            if self.validate_baud(baud):
+                self.baud = baud
+                break
+
+        self.print_header()
+
+        if not self.open_serial():
+            return
+
+        self.start_reader()
+
+        try:
+            while True:
+                line = input()
+                if line.startswith("/"):
+                    if not self.handle_command(line):
+                        break
+                else:
+                    if self.ser and self.ser.is_open:
+                        # sys.stdout.write(TX_COLOR + line + Style.RESET_ALL + "\n")
+                        # sys.stdout.flush()
+                        self.ser.write((line + "\n").encode())
+
+        except (KeyboardInterrupt, EOFError):
+            pass
+        finally:
+            self.close_serial()
+            print(f"{TERM_COLOR}\nExiting.")
+
 
 def main():
-    port = prompt_port()
-    baud = prompt_baud()
-    logfile = os.path.join(LOG_DIR, f"{port.replace('/', '_')}.log")
-    home_screen(port, baud)
-    stop_event = threading.Event()
-    ser = open_serial(port, baud)
-    reader_thread = threading.Thread(target=serial_reader, args=(ser, stop_event, logfile), daemon=True)
-    reader_thread.start()
-
-    try:
-        while True:
-            line = input()
-            if line.startswith("/"):
-                tokens = line.split()
-                cmd = tokens[0].lower()
-                if cmd in ("/q","/quit"):
-                    break
-                elif cmd in ("/h", "/help"):
-                    print(f"{TERM_COLOR}Commands:")
-                    print(f"{TERM_COLOR} /h      /help   - Show this message")
-                    print(f"{TERM_COLOR} /cls    /clear  - Clear the screen")
-                    print(f"{TERM_COLOR} /q      /quit   - Exit terminal")
-                    print(f"{TERM_COLOR} /port <COM/tty> - Change serial port")
-                    print(f"{TERM_COLOR} /baud <rate>    - Change baud rate")
-                    print(f"{TERM_COLOR} /log <filename> - Change log file")
-                    print(f"{TERM_COLOR} /lsp    /lsport - List available serial ports{Style.RESET_ALL}")
-                elif cmd in ("/cls", "/clear"):
-                    # Clear the screen and reprint the header and prompts
-                    os.system('cls' if os.name == 'nt' else 'clear')
-                    print_header()
-                elif cmd in ("/lsport", "/lsp"):
-                    print(f"{TERM_COLOR}Available serial ports (not in use):")
-                    all_ports = [port for port in serial.tools.list_ports.comports() if not port.device.startswith('NULL_')]
-                    available_ports = []
-                    for port in all_ports:
-                        try:
-                            s = serial.Serial(port.device, timeout=0.1)
-                            s.close()
-                            available_ports.append(port)
-                        except (serial.SerialException, OSError):
-                            pass
-                    if available_ports:
-                        maxlen = max(len(port.device) for port in available_ports)
-                        label_width = maxlen + 3  # 3 for ' -'
-                        for port in available_ports:
-                            port_name = f"{port.device}"
-                            print(f"  {TERM_COLOR}{port_name.ljust(label_width)}{Style.RESET_ALL} {LSPORT_COLOR}- {port.description}{Style.RESET_ALL}")
-                    else:
-                        print("  (No available serial ports found)")
-                elif cmd == "/port" and len(tokens) >= 2:
-                    new_port = tokens[1]
-                    print(f"{TERM_COLOR}[Switching to port {new_port}]{Style.RESET_ALL}")
-                    stop_event.set()
-                    reader_thread.join()
-                    ser.close()
-                    port = validate_port(new_port)
-                    stop_event.clear()
-                    ser = open_serial()
-                    reader_thread = threading.Thread(target=serial_reader, args=(ser, stop_event, logfile), daemon=True)
-                    reader_thread.start()
-                elif cmd == "/baud" and len(tokens) >= 2:
-                    baud = int(tokens[1])
-                    print(f"{TERM_COLOR}[Switching baud rate to {baud}]{Style.RESET_ALL}")
-                    stop_event.set()
-                    reader_thread.join()
-                    ser.close()
-                    stop_event.clear()
-                    ser = open_serial()
-                    reader_thread = threading.Thread(target=serial_reader, args=(ser, stop_event, logfile), daemon=True)
-                    reader_thread.start()
-                elif cmd == "/log" and len(tokens) >= 2:
-                    logfile = os.path.join(LOG_DIR, tokens[1])
-                    print(f"{TERM_COLOR}[Logging to {logfile}]{Style.RESET_ALL}")
-                else:
-                    print("Unknown command. Type /help for list.")
-            else:
-                if ser and ser.is_open:
-                    ser.write((line + "\n").encode())
-    except KeyboardInterrupt:
-        print(f"{TERM_COLOR}User exited.{Style.RESET_ALL}")
-    except EOFError:
-        print(f"{TERM_COLOR}End of input.{Style.RESET_ALL}")
-    finally:
-        stop_event.set()
-        reader_thread.join()
-        ser.close()
-        print(f"{TERM_COLOR}\nQuitting Termial.{Style.RESET_ALL}")
-
+    SerialTerminal().run()
 
 
 if __name__ == "__main__":
