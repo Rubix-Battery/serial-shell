@@ -54,6 +54,14 @@ def prompt_baud():
         baud_input = input(f"Enter baud rate {COMMON_BAUD_RATES} [default: 115200]: ").strip()
         baud = int(baud_input) if baud_input else 115200
         return validate_baud(baud)
+    
+def open_serial(port: str, baud: int):
+    try:
+        ser = serial.Serial(port, baud, timeout=0.5)
+        return ser
+    except (serial.SerialException, OSError) as e:
+        print(f"[Error: Could not open port '{port}': {e}]")
+        return None
 
 
 def get_valid_port():
@@ -65,35 +73,25 @@ def get_valid_port():
             return port
         print(f"{ERROR_COLOR}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
 
+def print_header(port: str, baud: int):
+    print(f"{TERMIAL_COLOR}=== Termial: Simple Serial Terminal ===")
+    print(f"{TERMIAL_COLOR}Type /help for commands.\n")
+    print(f"{TERMIAL_COLOR}Port: {port}")
+    print(f"{TERMIAL_COLOR}Baud: {baud}{Style.RESET_ALL}")
+
 def main():
     port = get_valid_port()
-
     baud = prompt_baud()
     logfile = os.path.join(LOG_DIR, f"{port.replace('/', '_')}.log")
 
-    # clear the setup details
+    # clear the setup prompts and details
     os.system('cls' if os.name == 'nt' else 'clear')
 
-    def print_header():
-        print(f"{TERMIAL_COLOR}=== Termial: Simple Serial Terminal ===")
-        print(f"{TERMIAL_COLOR}Type /help for commands.\n")
-        print(f"{TERMIAL_COLOR}Port: {port}")
-        print(f"{TERMIAL_COLOR}Baud: {baud}{Style.RESET_ALL}")
-
-    print_header()
+    print_header(port, baud)
 
     stop_event = threading.Event()
-
-
-    def open_serial():
-        try:
-            ser = serial.Serial(port, baud, timeout=0.5)
-            return ser
-        except (serial.SerialException, OSError) as e:
-            print(f"[Error: Could not open port '{port}': {e}]")
-            return None
-
-    ser = open_serial()
+    ser = open_serial(port, baud)
+    
     while ser is None:
         port = input("Enter a valid port (e.g., COM1): ").strip()
         ser = open_serial()
