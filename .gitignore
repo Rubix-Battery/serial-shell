@@ -4,3 +4,4 @@ venv/
 # pyinstaller ignores
 build/
 **.spec
+**flop**
