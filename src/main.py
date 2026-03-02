@@ -14,6 +14,12 @@ from colorama import init, Fore, Style
 # Initialize colorama
 init(autoreset=True)
 
+# text colors
+TERMIAL_COLOR = Fore.LIGHTCYAN_EX
+ERROR_COLOR = Fore.RED
+RX_COLOR = Fore.CYAN
+LSPORT_COLOR = Fore.YELLOW
+
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 
@@ -27,13 +33,13 @@ def serial_reader(ser, stop_event, logfile=None):
                 # Ensure each RX message ends with a newline
                 if not text.endswith("\n"):
                     text += "\n"
-                sys.stdout.write(Fore.GREEN + text + Style.RESET_ALL)
+                sys.stdout.write(RX_COLOR + text + Style.RESET_ALL)
                 sys.stdout.flush()
                 if logfile:
                     with open(logfile, 'a') as f:
                         f.write(f"RX: {text}")
         except Exception as e:
-            print(f"[Serial read error: {e}]")
+            print(f"{ERROR_COLOR}[Serial read error: {e}]{Style.RESET_ALL}")
             break
 
 def main():
@@ -43,11 +49,11 @@ def main():
     def get_valid_port():
         while True:
             ports = [p.device for p in serial.tools.list_ports.comports() if not p.device.startswith('NULL_')]
-            port_input = input(f"Enter port (e.g., COM1) [{ports[0] if ports else 'COM1'}]: ").strip()
+            port_input = input(f"{TERMIAL_COLOR}Enter port (e.g., COM1) [{ports[0] if ports else 'COM1'}]: ").strip()
             port = port_input.upper() if port_input else (ports[0] if ports else 'COM1')
             if port in ports:
                 return port
-            print(f"{Fore.RED}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
+            print(f"{ERROR_COLOR}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
 
     port = get_valid_port()
 
@@ -59,7 +65,7 @@ def main():
             baud = int(baud_input) if baud_input else 115200
             if baud in COMMON_BAUD_RATES:
                 return baud
-            print(f"{Fore.RED}[Error: '{baud}' is not a valid baud rate. Allowed: {', '.join(str(b) for b in COMMON_BAUD_RATES)}]{Style.RESET_ALL}")
+            print(f"{ERROR_COLOR}[Error: '{baud}' is not a valid baud rate. Allowed: {', '.join(str(b) for b in COMMON_BAUD_RATES)}]{Style.RESET_ALL}")
 
     baud = get_valid_baud()
     logfile = os.path.join(LOG_DIR, f"{port.replace('/', '_')}.log")
@@ -68,10 +74,10 @@ def main():
     os.system('cls' if os.name == 'nt' else 'clear')
 
     def print_header():
-        print("=== Termial: Simple Serial Terminal ===")
-        print("Type /help for commands.\n")
-        print(f"Port: {port}")
-        print(f"Baud: {baud}")
+        print(f"{TERMIAL_COLOR}=== Termial: Simple Serial Terminal ===")
+        print(f"{TERMIAL_COLOR}Type /help for commands.\n")
+        print(f"{TERMIAL_COLOR}Port: {port}")
+        print(f"{TERMIAL_COLOR}Baud: {baud}{Style.RESET_ALL}")
 
     print_header()
 
@@ -131,12 +137,12 @@ def main():
                         label_width = maxlen + 3  # 3 for ' -'
                         for port in available_ports:
                             port_name = f"{port.device}"
-                            print(f"  {Fore.BLUE}{port_name.ljust(label_width)}{Style.RESET_ALL} {Fore.YELLOW}-{Style.RESET_ALL} {Fore.MAGENTA}{port.description}{Style.RESET_ALL}")
+                            print(f"  {TERMIAL_COLOR}{port_name.ljust(label_width)}{Style.RESET_ALL} {LSPORT_COLOR}- {port.description}{Style.RESET_ALL}")
                     else:
                         print("  (No available serial ports found)")
                 elif cmd == "/port" and len(tokens) >= 2:
                     new_port = tokens[1]
-                    print(f"{Fore.CYAN}[Switching to port {new_port}]{Style.RESET_ALL}")
+                    print(f"{TERMIAL_COLOR}[Switching to port {new_port}]{Style.RESET_ALL}")
                     stop_event.set()
                     reader_thread.join()
                     ser.close()
@@ -147,7 +153,7 @@ def main():
                     reader_thread.start()
                 elif cmd == "/baud" and len(tokens) >= 2:
                     baud = int(tokens[1])
-                    print(f"{Fore.CYAN}[Switching baud rate to {baud}]{Style.RESET_ALL}")
+                    print(f"{TERMIAL_COLOR}[Switching baud rate to {baud}]{Style.RESET_ALL}")
                     stop_event.set()
                     reader_thread.join()
                     ser.close()
@@ -157,21 +163,21 @@ def main():
                     reader_thread.start()
                 elif cmd == "/log" and len(tokens) >= 2:
                     logfile = os.path.join(LOG_DIR, tokens[1])
-                    print(f"{Fore.CYAN}[Logging to {logfile}]{Style.RESET_ALL}")
+                    print(f"{TERMIAL_COLOR}[Logging to {logfile}]{Style.RESET_ALL}")
                 else:
                     print("Unknown command. Type /help for list.")
             else:
                 if ser and ser.is_open:
                     ser.write((line + "\n").encode())
     except KeyboardInterrupt:
-        print(f"{Fore.CYAN}User exited.{Style.RESET_ALL}")
+        print(f"{TERMIAL_COLOR}User exited.{Style.RESET_ALL}")
     except EOFError:
-        print(f"{Fore.CYAN}End of input.{Style.RESET_ALL}")
+        print(f"{TERMIAL_COLOR}End of input.{Style.RESET_ALL}")
     finally:
         stop_event.set()
         reader_thread.join()
         ser.close()
-        print(f"{Fore.CYAN}\nTerminal closed.{Style.RESET_ALL}")
+        print(f"{TERMIAL_COLOR}\nTerminal closed.{Style.RESET_ALL}")
 
 
 
