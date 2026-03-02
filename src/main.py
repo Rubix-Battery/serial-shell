@@ -57,13 +57,15 @@ def main():
         while True:
             baud_input = input(f"Enter baud rate {COMMON_BAUD_RATES} [default: 115200]: ").strip()
             baud = int(baud_input) if baud_input else 115200
-            os.system('cls' if os.name == 'nt' else 'clear')
             if baud in COMMON_BAUD_RATES:
                 return baud
             print(f"{Fore.RED}[Error: '{baud}' is not a valid baud rate. Allowed: {', '.join(str(b) for b in COMMON_BAUD_RATES)}]{Style.RESET_ALL}")
 
     baud = get_valid_baud()
     logfile = os.path.join(LOG_DIR, f"{port.replace('/', '_')}.log")
+
+    # clear the setup details
+    os.system('cls' if os.name == 'nt' else 'clear')
 
     def print_header():
         print("=== Termial: Simple Serial Terminal ===")
