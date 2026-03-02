@@ -74,28 +74,26 @@ def get_valid_port():
         print(f"{ERROR_COLOR}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
 
 def print_header(port: str, baud: int):
-    print(f"{TERMIAL_COLOR}=== Termial: Simple Serial Terminal ===")
+    print(f"{TERMIAL_COLOR}=======================================")
+    print(f"{TERMIAL_COLOR}    Termial: Simple Serial Terminal    ")
+    print(f"{TERMIAL_COLOR}=======================================")
     print(f"{TERMIAL_COLOR}Type /help for commands.\n")
     print(f"{TERMIAL_COLOR}Port: {port}")
-    print(f"{TERMIAL_COLOR}Baud: {baud}{Style.RESET_ALL}")
+    print(f"{TERMIAL_COLOR}Baud: {baud}\n")
+    print(f"{TERMIAL_COLOR}=======================================\n{Style.RESET_ALL}")
+
+def home_screen(port: str, baud: int):
+    # clear the setup prompts and details
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print_header(port, baud)
 
 def main():
     port = get_valid_port()
     baud = prompt_baud()
     logfile = os.path.join(LOG_DIR, f"{port.replace('/', '_')}.log")
-
-    # clear the setup prompts and details
-    os.system('cls' if os.name == 'nt' else 'clear')
-
-    print_header(port, baud)
-
+    home_screen(port, baud)
     stop_event = threading.Event()
     ser = open_serial(port, baud)
-    
-    while ser is None:
-        port = input("Enter a valid port (e.g., COM1): ").strip()
-        ser = open_serial()
-
     reader_thread = threading.Thread(target=serial_reader, args=(ser, stop_event, logfile), daemon=True)
     reader_thread.start()
 
@@ -105,23 +103,23 @@ def main():
             if line.startswith("/"):
                 tokens = line.split()
                 cmd = tokens[0].lower()
-                if cmd == "/quit":
+                if cmd in ("/q","/quit"):
                     break
-                elif cmd == "/help":
+                elif cmd in ("/h", "/help"):
                     print("Commands:")
-                    print(" /help           - Show this message")
-                    print(" /cls            - Clear the screen")
-                    print(" /quit           - Exit terminal")
-                    print(" /port <COM>     - Change serial port")
+                    print(" /h      /help   - Show this message")
+                    print(" /cls    /clear  - Clear the screen")
+                    print(" /q      /quit   - Exit terminal")
+                    print(" /port <COM/tty> - Change serial port")
                     print(" /baud <rate>    - Change baud rate")
                     print(" /log <filename> - Change log file")
-                    print(" /lsport        - List available serial ports")
-                elif cmd == "/cls":
+                    print(" /lsp    /lsport - List available serial ports")
+                elif cmd in ("/cls", "/clear"):
                     # Clear the screen and reprint the header and prompts
                     os.system('cls' if os.name == 'nt' else 'clear')
                     print_header()
-                elif cmd == "/lsport":
-                    print("Available serial ports (not in use):")
+                elif cmd in ("/lsport", "/lsp"):
+                    print(f"{TERMIAL_COLOR}Available serial ports (not in use):")
                     all_ports = [port for port in serial.tools.list_ports.comports() if not port.device.startswith('NULL_')]
                     available_ports = []
                     for port in all_ports:
@@ -176,7 +174,7 @@ def main():
         stop_event.set()
         reader_thread.join()
         ser.close()
-        print(f"{TERMIAL_COLOR}\nTerminal closed.{Style.RESET_ALL}")
+        print(f"{TERMIAL_COLOR}\nQuitting Termial.{Style.RESET_ALL}")
 
 
 
