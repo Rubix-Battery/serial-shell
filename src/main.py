@@ -158,6 +158,8 @@ class SerialTerminal:
             print(f"{TERM_COLOR}/p <COMx>   Change port")
             print(f"{TERM_COLOR}/b <rate>   Change baud")
             print(f"{TERM_COLOR}/lsp        List ports")
+            print(f"{TERM_COLOR} Note: The log file is located in the logs")
+            print(f"{TERM_COLOR}       folder next to the executable.")
 
         elif cmd in ("/clear", "/cls", "/c"):
             os.system("cls" if os.name == "nt" else "clear")
