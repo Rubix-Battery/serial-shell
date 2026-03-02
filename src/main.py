@@ -42,32 +42,33 @@ def serial_reader(ser, stop_event, logfile=None):
             print(f"{ERROR_COLOR}[Serial read error: {e}]{Style.RESET_ALL}")
             break
 
+COMMON_BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
+
+def validate_baud(baud: int):
+    if baud in COMMON_BAUD_RATES:
+        return baud
+    print(f"{ERROR_COLOR}[Error: '{baud}' is not a valid baud rate. Allowed: {', '.join(str(b) for b in COMMON_BAUD_RATES)}]{Style.RESET_ALL}")
+
+def prompt_baud():
+    while True:
+        baud_input = input(f"Enter baud rate {COMMON_BAUD_RATES} [default: 115200]: ").strip()
+        baud = int(baud_input) if baud_input else 115200
+        return validate_baud(baud)
+
+
+def get_valid_port():
+    while True:
+        ports = [p.device for p in serial.tools.list_ports.comports() if not p.device.startswith('NULL_')]
+        port_input = input(f"{TERMIAL_COLOR}Enter port (e.g., COM1) [{ports[0] if ports else 'COM1'}]: ").strip()
+        port = port_input.upper() if port_input else (ports[0] if ports else 'COM1')
+        if port in ports:
+            return port
+        print(f"{ERROR_COLOR}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
+
 def main():
-    # ...existing code...
-
-
-    def get_valid_port():
-        while True:
-            ports = [p.device for p in serial.tools.list_ports.comports() if not p.device.startswith('NULL_')]
-            port_input = input(f"{TERMIAL_COLOR}Enter port (e.g., COM1) [{ports[0] if ports else 'COM1'}]: ").strip()
-            port = port_input.upper() if port_input else (ports[0] if ports else 'COM1')
-            if port in ports:
-                return port
-            print(f"{ERROR_COLOR}[Error: '{port}' is not a valid port. Available: {', '.join(ports) if ports else 'None'}]{Style.RESET_ALL}")
-
     port = get_valid_port()
 
-    COMMON_BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
-
-    def get_valid_baud():
-        while True:
-            baud_input = input(f"Enter baud rate {COMMON_BAUD_RATES} [default: 115200]: ").strip()
-            baud = int(baud_input) if baud_input else 115200
-            if baud in COMMON_BAUD_RATES:
-                return baud
-            print(f"{ERROR_COLOR}[Error: '{baud}' is not a valid baud rate. Allowed: {', '.join(str(b) for b in COMMON_BAUD_RATES)}]{Style.RESET_ALL}")
-
-    baud = get_valid_baud()
+    baud = prompt_baud()
     logfile = os.path.join(LOG_DIR, f"{port.replace('/', '_')}.log")
 
     # clear the setup details
