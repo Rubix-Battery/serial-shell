@@ -15,7 +15,6 @@ TERM_COLOR = Fore.CYAN
 ERROR_COLOR = Fore.RED
 RX_COLOR = Fore.LIGHTCYAN_EX
 TX_COLOR = Fore.GREEN
-PORT_COLOR = Fore.YELLOW
 
 COMMON_BAUD_RATES = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
 
@@ -45,13 +44,13 @@ class SerialTerminal:
 
     def available_ports(self):
         return [
-            p.device
+            (p.device, p.description)
             for p in serial.tools.list_ports.comports()
             if not p.device.startswith("NULL_")
         ]
 
     def validate_port(self, port):
-        ports = self.available_ports()
+        ports = [p[0] for p in self.available_ports()]
         if port in ports:
             return True
         print(f"{ERROR_COLOR}Invalid port: {port} Available: {', '.join(ports) if ports else 'None'}")
@@ -140,8 +139,8 @@ class SerialTerminal:
             print("No available ports.")
             return
         print(f"{TERM_COLOR}Available Ports:")
-        for p in ports:
-            print(f"  {PORT_COLOR}{p}")
+        for device, desc in ports:
+            print(f"  {TERM_COLOR}{device}\t{desc}")
 
     def handle_command(self, line):
         parts = line.split()
@@ -230,8 +229,10 @@ class SerialTerminal:
                         break
                 else:
                     if self.ser and self.ser.is_open:
-                        # sys.stdout.write(TX_COLOR + line + Style.RESET_ALL + "\n")
-                        # sys.stdout.flush()
+                        # Log TX to file
+                        if self.logfile:
+                            with open(self.logfile, "a") as f:
+                                f.write(f"TX: {line}\n")
                         self.ser.write((line + "\n").encode())
 
         except (KeyboardInterrupt, EOFError):
