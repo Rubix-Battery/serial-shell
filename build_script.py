@@ -8,7 +8,7 @@ def clean():
     if os.path.isdir("build"):
         shutil.rmtree("build")
     # Remove .spec file if it exists
-    spec_file = "Termial.spec"
+    spec_file = "serial-shell.spec"
     if os.path.isfile(spec_file):
         os.remove(spec_file)
 
@@ -17,14 +17,14 @@ def build_executable():
     subprocess.run([
         "pyinstaller",
         "--onefile",
-        "--icon=img/termial.ico",
-        "--name=Termial",
+        "--icon=img/serial-shell.ico",
+        "--name=serial-shell",
         "src/main.py"
     ], check=True)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Build Termial executable.")
+    parser = argparse.ArgumentParser(description="Build serial-shell executable.")
     parser.add_argument(
         "-k", "--keep-build",
         action="store_true",

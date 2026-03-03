@@ -1,9 +1,9 @@
-# Termial
+# SERIAL-SHELL
 Simple serial monitor terminal that feels like a standard terminal.
 
 ## How to use
 
-Simply launch the `Termial.exe` and use it! You can leave the port and baud at the default `COM1` and `115200` by pressing `Enter` or enter new values when prompted. Be sure to check out the help section if needed by typing `/help`. (Any text preceded by `/` is treated as a special command to `Termial`)
+Simply launch the `serial-shell.exe` and use it! You can leave the port and baud at the default `COM1` and `115200` by pressing `Enter` or enter new values when prompted. Be sure to check out the help section if needed by typing `/help`. (Any text preceded by `/` is treated as a special command to `serial-shell`)
 
 ## Python `venv` setup
 
