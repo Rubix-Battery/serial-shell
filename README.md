@@ -24,9 +24,13 @@ venv/Scripts/Activate.ps1
 ## Packaging into executable
 
 ```shell
-pyinstaller --onefile --icon=img/termial.ico --name=Termial src/main.py
-# Note: The icon may not change until you reboot the PC or copy the 
-# executable to another location.
+# to build and cleanup the build artifacts in one go:
+python build_script.py
+# if you wish to keep the build artifacts for analysis:
+python build_script.py -k
+
+# Note: The icon for the .exe may not change until you reboot the 
+#PC or copy the executable to another location.
 ```
 
 ## Resources
