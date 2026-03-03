@@ -43,11 +43,16 @@ class SerialTerminal:
     # --------------------------------------------------
 
     def available_ports(self):
-        return [
-            (p.device, p.description)
-            for p in serial.tools.list_ports.comports()
-            if not p.device.startswith("NULL_")
-        ]
+        available = []
+        for p in serial.tools.list_ports.comports():
+            if not p.device.startswith("NULL_"):
+                try:
+                    s = serial.Serial(p.device, timeout=0.1)
+                    s.close()
+                    available.append((p.device, p.description))
+                except (serial.SerialException, OSError):
+                    pass
+        return available
 
     def validate_port(self, port):
         ports = [p[0] for p in self.available_ports()]
