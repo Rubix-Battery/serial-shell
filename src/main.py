@@ -134,7 +134,7 @@ class SerialTerminal:
         # clear the setup prompts and details
         os.system('cls' if os.name == 'nt' else 'clear')
         print(f"{TERM_COLOR}=================================")
-        print(f"{TERM_COLOR}        serial-shell console         ")
+        print(f"{TERM_COLOR}          Serial Shell           ")
         print(f"{TERM_COLOR}=================================")
         print(f"{TERM_COLOR}Port: {self.port}")
         print(f"{TERM_COLOR}Baud: {self.baud}")
