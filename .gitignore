@@ -2,6 +2,7 @@ logs/
 venv/
 
 # pyinstaller ignores
+dist/
 build/
 **.spec
 
