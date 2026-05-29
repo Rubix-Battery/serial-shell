@@ -1,3 +1,2 @@
 pyserial==3.5       # A must for serial communication
 colorama==0.4.6
-pyinstaller==6.19.0 # For packaging this into an executable
