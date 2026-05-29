@@ -16,6 +16,7 @@ def setup_venv():
     python_exe = "python" if os.name == "nt" else "python3"
     subprocess.run([python_exe, "-m", "venv", "venv"])
     venv_python = os.path.join("venv", "Scripts", "python.exe") if os.name == "nt" else os.path.join("venv", "bin", "python")
+    subprocess.run([venv_python, "-m", "pip", "install", "pyinstaller"])
     subprocess.run([venv_python, "-m", "pip", "install", "-r", "requirements.txt"])
 
 def clean():
